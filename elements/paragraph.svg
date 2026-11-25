@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" width="480" height="280">
+<title>paragraph — schematic</title>
+<desc>Wireframe, no brand: grey bars are lines of body text. Six full-width lines of running text, the last one short.</desc>
+<rect x="0" y="0" width="240" height="140" fill="#ffffff"/>
+<rect fill="#bdbdbd" x="20" y="31" width="200" height="6" rx="3"/><rect fill="#bdbdbd" x="20" y="46" width="200" height="6" rx="3"/><rect fill="#bdbdbd" x="20" y="61" width="200" height="6" rx="3"/><rect fill="#bdbdbd" x="20" y="76" width="200" height="6" rx="3"/><rect fill="#bdbdbd" x="20" y="91" width="200" height="6" rx="3"/><rect fill="#bdbdbd" x="20" y="106" width="120" height="6" rx="3"/>
+</svg>

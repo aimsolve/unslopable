@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" width="480" height="280">
+<title>definition — schematic</title>
+<desc>Wireframe, no brand: a shaded box; first line a bold bar (the term), a dash, a grey bar; then three grey lines that say what the term means.</desc>
+<rect x="0" y="0" width="240" height="140" fill="#ffffff"/>
+<rect fill="#ececec" x="20" y="28" width="200" height="84" rx="6"/><rect fill="#222222" x="34" y="42" width="64" height="8" rx="4"/><rect fill="#222222" x="104" y="45" width="10" height="2"/><rect fill="#bdbdbd" x="120" y="43" width="80" height="6" rx="3"/><rect fill="#bdbdbd" x="34" y="62" width="172" height="6" rx="3"/><rect fill="#bdbdbd" x="34" y="76" width="160" height="6" rx="3"/><rect fill="#bdbdbd" x="34" y="90" width="96" height="6" rx="3"/>
+</svg>

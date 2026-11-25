@@ -1,0 +1,5 @@
+{
+  "name": "unslopable",
+  "owner": { "name": "Stanislau Stankevich" },
+  "plugins": [{ "name": "unslopable", "source": "./" }]
+}

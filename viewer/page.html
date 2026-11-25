@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document viewer</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --panel: #ffffff; --line: #e4e4e0; --ink: #1d1d1b; --mute: #74746e;
+    --pass: #1f8a4c; --pass-bg: #e3f4ea; --fail: #c62f2f; --fail-bg: #fbe6e4;
+    --wait: #a86b00; --wait-bg: #fdf0d6; --none-bg: #eeeeec; --sel: #e8eefc; --write: #3b5bdb;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink);
+         background: var(--bg); height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 14px;
+           border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 15px; margin: 0 6px 0 0; }
+  select, button, input { font: inherit; }
+  select { max-width: 360px; padding: 3px 6px; }
+  label.f { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--mute); }
+  .chip { display: inline-flex; gap: 6px; align-items: center; background: var(--sel); border-radius: 10px;
+          padding: 1px 8px; font-size: 12px; }
+  .chip button { border: 0; background: none; cursor: pointer; color: var(--mute); padding: 0; }
+  .status { color: var(--mute); font-size: 12px; margin-left: auto; }
+  .live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #aaa; margin-right: 4px; }
+  .live.on { background: var(--pass); }
+  #missing { background: var(--wait-bg); border-bottom: 1px solid var(--line); padding: 4px 14px; font-size: 13px; }
+  #missing ul { margin: 4px 0 6px; padding-left: 18px; }
+  main { flex: 1; display: flex; min-height: 0; }
+  #tree { width: 34%; min-width: 300px; overflow: auto; border-right: 1px solid var(--line); background: var(--panel); }
+  #events { flex: 1; overflow: auto; padding: 12px 18px 80px; }
+  .group { position: sticky; top: 0; background: #f3f3f0; font-weight: 600; padding: 5px 12px;
+           border-bottom: 1px solid var(--line); z-index: 1; }
+  .row { display: flex; align-items: baseline; gap: 8px; padding: 3px 12px; cursor: pointer;
+         border-bottom: 1px solid #f1f1ee; border-left: 4px solid transparent; }
+  .row:hover { background: #f6f6f3; }
+  .row.sel { background: var(--sel); }
+  .row.had { border-left-color: var(--fail); }
+  .row .id { font: 12px ui-monospace, Menlo, monospace; color: var(--mute); white-space: nowrap; }
+  .row .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row.k-section .label, .row.k-level .label, .row.k-document .label { font-weight: 600; }
+  .pill { display: inline-block; padding: 0 6px; border-radius: 9px; font-size: 12px; white-space: nowrap; }
+  .pill.pass { background: var(--pass-bg); color: var(--pass); }
+  .pill.fail { background: var(--fail-bg); color: var(--fail); font-weight: 600; }
+  .pill.wait { background: var(--wait-bg); color: var(--wait); }
+  .pill.none { background: var(--none-bg); color: var(--mute); }
+  .pill.now { background: var(--fail); color: #fff; }
+  .ev { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 6px;
+        padding: 6px 12px; margin-bottom: 6px; }
+  .ev.write { border-left-color: var(--write); }
+  .ev.write.failed { border-left-color: var(--fail); }
+  .ev.fail { border-left-color: var(--fail); background: #fffafa; }
+  .ev.pass { border-left-color: var(--pass); padding: 3px 12px; }
+  .ev .head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .ev .time { font: 12px ui-monospace, Menlo, monospace; color: var(--mute); }
+  .ev .what { font-weight: 600; }
+  .ev .sub { color: var(--mute); font-size: 12px; }
+  .ev.disk { border-style: dashed; }
+  .ev .note { margin-top: 4px; font-size: 13px; color: var(--mute); font-style: italic; }
+  .ev .complaint { white-space: pre-wrap; margin-top: 4px; }
+  .tag { font-size: 11px; color: var(--wait); border: 1px solid var(--wait); border-radius: 4px; padding: 0 4px; }
+  .piece { margin-top: 6px; }
+  .piece .pid { font: 12px ui-monospace, Menlo, monospace; color: var(--mute); }
+  .diff, .text { white-space: pre-wrap; margin-top: 2px; max-height: 340px; overflow: auto; background: #fcfcfb;
+                 border: 1px solid #efefec; border-radius: 4px; padding: 6px 8px; }
+  .diff del { background: var(--fail-bg); color: var(--fail); text-decoration: line-through; }
+  .diff ins { background: var(--pass-bg); color: var(--pass); text-decoration: none; }
+  .diff del + ins { margin-left: 3px; }
+  .scripts { margin: 4px 0 0; padding-left: 18px; color: var(--fail); font-size: 13px; }
+  button.link { font-size: 12px; padding: 0 6px; cursor: pointer; background: none; border: 1px solid var(--line);
+                border-radius: 4px; color: var(--mute); }
+  pre.prompt { white-space: pre-wrap; font: 12px/1.4 ui-monospace, Menlo, monospace; background: #f6f6f3;
+               border-radius: 4px; padding: 8px; max-height: 420px; overflow: auto; }
+  img.fig { max-width: 320px; max-height: 240px; border: 1px solid var(--line); border-radius: 4px; display: block;
+            margin-top: 4px; }
+  .empty { color: var(--mute); padding: 30px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 data-t="title"></h1>
+  <select id="doc"></select>
+  <label class="f"><span data-t="file"></span> <select id="file"></select></label>
+  <label class="f"><span data-t="gate"></span> <select id="gate"></select></label>
+  <span id="unit"></span>
+  <label class="f"><input type="checkbox" id="onlyfail"> <span data-t="onlyComplaints"></span></label>
+  <span class="status"><span class="live" id="live"></span><span id="status"></span></span>
+</header>
+<div id="missing" hidden></div>
+<main>
+  <div id="tree"></div>
+  <div id="events"></div>
+</main>
+<script>
+"use strict";
+// Every word of the page's own copy is here, so the language is one place.
+const T = {
+  title: "Document viewer", file: "File", gate: "Gate", onlyComplaints: "complaints only", allFiles: "all files",
+  allGates: "all gates", pickDoc: "pick a document…", files: "Files", plan: "Plan", text: "Text",
+  versions: "versions", complaints: "complaints", failingNow: "not passed now", noDoc: "Pick a document above.",
+  noEvents: "Nothing in the timeline for this filter.", written: "written", version: "version", deleted: "deleted",
+  reconstructed: "reconstructed", scriptsFailed: "script gates not passed", notPassed: "not passed",
+  passedN: n => `${n} judge${n > 1 ? "s" : ""} passed`, prompt: "prompt", hidePrompt: "hide prompt",
+  missing: n => `Not on disk, so not in the timeline (${n})`, updated: "updated", binary: "binary file",
+  first: "first version", show: "show", hide: "hide", now: "as on disk now", more: "…cut; open the whole version",
+  removed: "removed", regated: "gated again", same: "no change", scriptLines: "which checks failed was not kept", by: "by",
+  counts: (w, c, p) => `${w} writes · ${c} complaints · ${p} passes`,
+};
+document.querySelectorAll("[data-t]").forEach(e => e.textContent = T[e.dataset.t]);
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const params = new URLSearchParams(location.search);
+const state = {folder: params.get("folder") || "", unit: params.get("unit") || "", gate: params.get("gate") || "",
+               file: params.get("file") || "", onlyfail: params.get("only") === "1", doc: null, sig: "",
+               open: new Set(), byKey: {}};
+
+function saveUrl() {
+  const p = new URLSearchParams();
+  for (const [k, v] of [["folder", state.folder], ["unit", state.unit], ["gate", state.gate], ["file", state.file]])
+    if (v) p.set(k, v);
+  if (state.onlyfail) p.set("only", "1");
+  history.replaceState(null, "", "?" + p.toString());
+}
+
+let listed = "";
+async function loadDocuments() {
+  const list = await (await fetch("/api/documents")).json();
+  const key = JSON.stringify(list) + state.folder;
+  if (key === listed) return;  // rebuilt only when it changed, so an open list is not closed under the reader
+  listed = key;
+  if (state.folder && !list.some(d => d.folder === state.folder))
+    list.unshift({folder: state.folder, name: state.folder.split("/").pop(), parent: "", time: ""});
+  $("#doc").innerHTML = `<option value="">${esc(T.pickDoc)}</option>` + list.map(d =>
+    `<option value="${esc(d.folder)}" ${d.folder === state.folder ? "selected" : ""}>${esc((d.parent ? d.parent + "/" : "") + d.name)}${d.time ? " · " + esc(d.time) : ""}</option>`).join("");
+}
+
+$("#doc").onchange = e => { Object.assign(state, {folder: e.target.value, unit: "", file: "", gate: "", sig: "", doc: null}); saveUrl(); poll(); };
+$("#file").onchange = e => { state.file = e.target.value; saveUrl(); render(); };
+$("#gate").onchange = e => { state.gate = e.target.value; saveUrl(); render(); };
+$("#onlyfail").onchange = e => { state.onlyfail = e.target.checked; saveUrl(); render(); };
+$("#onlyfail").checked = state.onlyfail;
+
+// ------------------------------------------------ filters
+// the units a picked unit stands for: itself, its descendants, and for a plan item its level (an attempt of the plan
+// belongs to its level)
+function unitSet() {
+  if (!state.unit) return null;
+  const set = new Set([state.unit]);
+  // a plan level stands for its items too: their judges' attempts belong to the level
+  for (const u of state.doc.units) if (u.level === state.unit) set.add(u.key);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const u of state.doc.units) if (u.parent && set.has(u.parent) && !set.has(u.key)) { set.add(u.key); grew = true; }
+  }
+  return set;
+}
+
+function levelOf(key) { const u = state.byKey[key]; return u && u.level; }
+
+function visible() {
+  const d = state.doc, units = unitSet(), out = [];
+  const gateUnits = state.gate ? new Set(d.events.filter(e => e.kind === "verdict" && e.gate === state.gate)
+                                           .flatMap(e => e.units).flatMap(k => [k, levelOf(k)])) : null;
+  for (const e of d.events) {
+    if (state.file && e.file !== state.file) continue;
+    if (e.kind === "verdict") {
+      if (state.gate && e.gate !== state.gate) continue;
+      if (units && !e.units.some(k => units.has(k))) continue;
+      if (state.onlyfail && e.verdict !== "NOT PASSED") continue;
+      out.push({e});
+    } else {
+      let pieces = e.pieces;
+      if (units) {
+        const lv = state.unit && levelOf(state.unit);
+        pieces = pieces.filter(p => units.has(p.unit) || p.unit === lv);
+        if (!pieces.length) continue;
+      } else if (gateUnits) {
+        pieces = pieces.filter(p => gateUnits.has(p.unit));
+        if (!pieces.length) continue;
+      }
+      if (state.onlyfail && !e.script_count) continue;
+      out.push({e, pieces});
+    }
+  }
+  return out;
+}
+
+// ------------------------------------------------ rendering
+function diffHtml(d) {
+  return d.map(([op, s]) => op === "=" ? esc(s) : op === "-" ? `<del>${esc(s)}</del>` : `<ins>${esc(s)}</ins>`).join("");
+}
+const q = () => "folder=" + encodeURIComponent(state.folder);
+
+function unitName(key) {
+  const u = state.byKey[key];
+  if (!u) return key.split(":").slice(1).join(":");
+  return (u.id ? u.id + " " : "") + (u.kind === "level" || u.kind === "document" ? u.label : "");
+}
+
+function writeHtml(e, pieces) {
+  const failed = e.script_count > 0;
+  let h = `<div class="ev write${failed ? " failed" : ""}"><div class="head"><span class="time">${esc(e.time)}</span>
+    <span class="what">${esc(e.file)}</span><span class="sub">${esc(e.deleted ? T.deleted : e.same && !e.tool ? T.regated : T.written)}${e.tool ? " " + esc(T.by) + " " + esc(e.tool) : ""} · ${esc(T.version)} ${e.n}${e.same ? " · " + esc(T.same) : ""}</span>
+    ${e.reconstructed ? `<span class="tag">${esc(e.file_now ? T.now : T.reconstructed)}</span>` : ""}
+    ${failed ? `<span class="pill fail">✗ ${esc(T.scriptsFailed)}: ${e.script_count}</span>` : ""}</div>`;
+  if (e.note) h += `<div class="note">${esc(e.note)}</div>`;
+  if (failed) h += e.scripts.length ? `<ul class="scripts">${e.scripts.map(s => `<li>${esc(s)}</li>`).join("")}</ul>`
+                                    : `<div class="sub">${esc(T.scriptLines)}</div>`;
+  for (const p of pieces) {
+    h += `<div class="piece"><span class="pid">${esc(unitName(p.unit))} · ${esc(p.removed ? T.removed : T.version + " " + p.n)}</span>
+      ${p.diff ? `<div class="diff">${diffHtml(p.diff)}</div>` : `<div class="text">${esc(p.text)}</div>`}</div>`;
+  }
+  if (!pieces.length && !e.deleted && !e.same) {
+    const key = "w" + e.id, open = state.open.has(key) || !!e.diff && e.diff.length < 12;
+    if (e.binary) {
+      const src = e.blob ? `/api/blob?${q()}&blob=${encodeURIComponent(e.blob)}` : `/api/file?${q()}&file=${encodeURIComponent(e.file)}`;
+      h += /\.(png|jpe?g|gif|webp|svg)$/i.test(e.file) ? `<img class="fig" loading="lazy" src="${src}" alt="">` : `<div class="sub">${esc(T.binary)}</div>`;
+    } else if (e.diff || e.text != null) {
+      h += ` <button class="link" data-open="${esc(key)}">${esc(open ? T.hide : T.show)}${e.diff ? "" : " · " + esc(T.first)}</button>`;
+      if (open) h += e.diff ? `<div class="diff">${diffHtml(e.diff)}</div>` : `<div class="text">${esc(e.text)}</div>`;
+      if (open && e.cut) h += `<a class="sub" target="_blank" href="${e.blob ? `/api/blob?${q()}&blob=${encodeURIComponent(e.blob)}` : `/api/file?${q()}&file=${encodeURIComponent(e.file)}`}">${esc(T.more)}</a>`;
+    }
+  }
+  return h + `</div>`;
+}
+
+function verdictHtml(e) {
+  const open = state.open.has("p" + e.judge);
+  return `<div class="ev fail"><div class="head"><span class="time">${esc(e.time)}</span>
+    <span class="pill fail">✗ ${esc(T.notPassed)}</span><span class="what">${esc(e.gate)}</span>
+    <span class="sub">${esc(e.unit)}</span>
+    ${e.prompt ? `<button class="link" data-open="p${esc(e.judge)}">${esc(open ? T.hidePrompt : T.prompt)}</button>` : ""}</div>
+    <div class="complaint">${esc(e.complaint)}</div>
+    ${open ? `<pre class="prompt" data-judge="${esc(e.judge)}">…</pre>` : ""}</div>`;
+}
+
+function passesHtml(group) {
+  const key = "g" + group[0].e.id, open = state.open.has(key);
+  const gates = [...new Set(group.map(x => x.e.gate))];
+  return `<div class="ev pass"><div class="head"><span class="time">${esc(group[0].e.time)}</span>
+    <span class="pill pass">✓ ${esc(T.passedN(group.length))}</span><span class="sub">${esc(gates.join(", "))}</span>
+    <button class="link" data-open="${esc(key)}">${esc(open ? T.hide : T.show)}</button></div>
+    ${open ? group.map(x => `<div class="sub">${esc(x.e.time)} · ${esc(x.e.gate)} · ${esc(x.e.unit)}
+      ${x.e.prompt ? `<button class="link" data-open="p${esc(x.e.judge)}">${esc(T.prompt)}</button>` : ""}
+      ${state.open.has("p" + x.e.judge) ? `<pre class="prompt" data-judge="${esc(x.e.judge)}">…</pre>` : ""}</div>`).join("") : ""}</div>`;
+}
+
+function renderEvents() {
+  const box = $("#events");
+  if (!state.doc) { box.innerHTML = `<div class="empty">${esc(T.noDoc)}</div>`; return; }
+  const items = visible();
+  let html = "", passes = [];
+  const flush = () => { if (passes.length) html += passesHtml(passes); passes = []; };
+  for (const it of items) {
+    if (it.e.kind === "verdict" && it.e.verdict === "PASSED") { passes.push(it); continue; }
+    flush();
+    html += it.e.kind === "write" ? writeHtml(it.e, it.pieces) : verdictHtml(it.e);
+  }
+  flush();
+  // a piece no judge saw in this version: its text as on disk now, outside the timeline (no time is known for it)
+  const units = unitSet();
+  if (units) html = state.doc.units.filter(u => units.has(u.key) && u.disk != null).map(u =>
+    `<div class="ev disk"><div class="head"><span class="what">${esc(unitName(u.key))}</span>
+     <span class="tag">${esc(T.now)}</span></div><div class="note">${esc(u.disk_note)}</div>
+     <div class="text">${esc(u.disk)}</div></div>`).join("") + html;
+  const top = box.scrollTop;
+  box.innerHTML = html || `<div class="empty">${esc(T.noEvents)}</div>`;
+  box.scrollTop = top;
+  box.querySelectorAll("[data-open]").forEach(b => b.onclick = () => {
+    const k = b.dataset.open;
+    state.open.has(k) ? state.open.delete(k) : state.open.add(k);
+    renderEvents();
+  });
+  box.querySelectorAll("pre.prompt").forEach(async pre => {
+    const r = await fetch(`/api/input?${q()}&id=${encodeURIComponent(pre.dataset.judge)}`);
+    pre.textContent = await r.text();
+  });
+}
+
+function renderTree() {
+  const d = state.doc, box = $("#tree");
+  if (!d) { box.innerHTML = ""; return; }
+  let html = `<div class="group">${esc(T.files)}</div>` + d.files.map(f =>
+    `<div class="row${state.file === f.file ? " sel" : ""}" data-file="${esc(f.file)}"><span class="label">${esc(f.file)}</span>
+     <span class="pill none" title="${esc(T.versions)}">${f.versions}</span></div>`).join("");
+  let side = "";
+  for (const u of d.units) {
+    if (u.side !== side) { side = u.side; html += `<div class="group">${esc(T[side])}</div>`; }
+    html += `<div class="row k-${esc(u.kind)}${u.complaints ? " had" : ""}${u.key === state.unit ? " sel" : ""}" data-key="${esc(u.key)}"
+      style="padding-left:${12 + u.depth * 16}px"><span class="id">${esc(u.id)}</span>
+      <span class="label" title="${esc(u.label)}">${esc(u.label)}</span>
+      ${u.complaints ? `<span class="pill fail" title="${esc(T.complaints)}">✗ ${u.complaints}</span>` : ""}
+      ${u.failing ? `<span class="pill now">${esc(T.failingNow)}</span>` : ""}</div>`;
+  }
+  box.innerHTML = html;
+  box.querySelectorAll("[data-key]").forEach(el => el.onclick = () => {
+    state.unit = state.unit === el.dataset.key ? "" : el.dataset.key; saveUrl(); render();
+  });
+  box.querySelectorAll("[data-file]").forEach(el => el.onclick = () => {
+    state.file = state.file === el.dataset.file ? "" : el.dataset.file; saveUrl(); render();
+  });
+}
+
+function renderHeader() {
+  const d = state.doc;
+  const opts = (all, list, cur) => `<option value="">${esc(all)}</option>` +
+    list.map(x => `<option ${x === cur ? "selected" : ""}>${esc(x)}</option>`).join("");
+  $("#file").innerHTML = opts(T.allFiles, d ? d.files.map(f => f.file) : [], state.file);
+  $("#gate").innerHTML = opts(T.allGates, d ? d.gates : [], state.gate);
+  $("#unit").innerHTML = state.unit ? `<span class="chip">${esc(unitName(state.unit))}<button id="clearunit">×</button></span>` : "";
+  if (state.unit) $("#clearunit").onclick = () => { state.unit = ""; saveUrl(); render(); };
+  const m = $("#missing");
+  m.hidden = !(d && d.missing.length);
+  if (d && d.missing.length)
+    m.innerHTML = `<details><summary>${esc(T.missing(d.missing.length))}</summary><ul>${d.missing.map(x =>
+      `<li>${x.file ? `<b>${esc(x.file)}</b>: ` : ""}${esc(x.what)}</li>`).join("")}</ul></details>`;
+}
+
+function renderStatus(ok) {
+  $("#live").classList.toggle("on", ok);
+  const d = state.doc;
+  if (!d) { $("#status").textContent = ""; return; }
+  const w = d.events.filter(e => e.kind === "write").length;
+  const c = d.events.filter(e => e.kind === "verdict" && e.verdict === "NOT PASSED").length;
+  const p = d.events.filter(e => e.kind === "verdict" && e.verdict === "PASSED").length;
+  $("#status").textContent = `${T.counts(w, c, p)} · ${T.updated} ${new Date().toLocaleTimeString()}`;
+}
+
+function render() { renderHeader(); renderTree(); renderEvents(); }
+
+let polling = false;  // one request at a time
+async function poll() {
+  if (!state.folder) { state.doc = null; render(); renderStatus(false); return; }
+  if (polling) return;
+  polling = true;
+  const folder = state.folder;
+  try {
+    const r = await fetch(`/api/timeline?${q()}&since=${encodeURIComponent(state.sig)}`);
+    if (folder !== state.folder) return;
+    if (!r.ok) { renderStatus(false); $("#status").textContent = await r.text(); return; }
+    const d = await r.json();
+    if (!d.unchanged) {
+      state.doc = d; state.sig = d.signature;
+      state.byKey = Object.fromEntries(d.units.map(u => [u.key, u]));
+      render();
+    }
+    renderStatus(true);
+  } catch (e) { renderStatus(false); }
+  finally { polling = false; if (folder !== state.folder) poll(); }  // another document was picked meanwhile
+}
+
+loadDocuments().then(poll);
+setInterval(poll, 3000);
+setInterval(loadDocuments, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" width="480" height="280">
+<title>bulleted_list — schematic</title>
+<desc>Wireframe, no brand: four items, each a black dot then one grey line of text; items are short and of the same kind, in no set order.</desc>
+<rect x="0" y="0" width="240" height="140" fill="#ffffff"/>
+<circle fill="#222222" cx="27" cy="36" r="3"/><rect fill="#bdbdbd" x="40" y="33" width="150" height="6" rx="3"/><circle fill="#222222" cx="27" cy="58" r="3"/><rect fill="#bdbdbd" x="40" y="55" width="120" height="6" rx="3"/><circle fill="#222222" cx="27" cy="80" r="3"/><rect fill="#bdbdbd" x="40" y="77" width="170" height="6" rx="3"/><circle fill="#222222" cx="27" cy="102" r="3"/><rect fill="#bdbdbd" x="40" y="99" width="100" height="6" rx="3"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" width="480" height="280">
+<title>callout — schematic</title>
+<desc>Wireframe, no brand: between faint lines of body text, a framed box with a thick border; a round mark on the left and two bold lines inside: one conclusion the reader must not miss.</desc>
+<rect x="0" y="0" width="240" height="140" fill="#ffffff"/>
+<rect fill="#bdbdbd" opacity="0.45" x="20" y="14" width="200" height="6" rx="3"/><rect fill="#bdbdbd" opacity="0.45" x="20" y="27" width="150" height="6" rx="3"/><rect fill="none" stroke="#222222" stroke-width="2.5" x="21" y="44" width="198" height="54" rx="8"/><circle fill="#222222" cx="44" cy="71" r="10"/><rect fill="#ffffff" x="43" y="64" width="2" height="9"/><circle fill="#ffffff" cx="44" cy="77" r="1.3"/><rect fill="#222222" x="64" y="61" width="136" height="7" rx="3.5"/><rect fill="#222222" x="64" y="75" width="96" height="7" rx="3.5"/><rect fill="#bdbdbd" opacity="0.45" x="20" y="113" width="200" height="6" rx="3"/><rect fill="#bdbdbd" opacity="0.45" x="20" y="126" width="120" height="6" rx="3"/>
+</svg>

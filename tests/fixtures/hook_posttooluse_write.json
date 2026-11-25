@@ -1,0 +1,10 @@
+{
+  "session_id": "00000000-0000-0000-0000-000000000000",
+  "transcript_path": "/nonexistent/transcript.jsonl",
+  "cwd": "/tmp",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Write",
+  "tool_input": {"file_path": "REPLACED_BY_TEST", "content": "(the file's content)"},
+  "tool_response": {"type": "update", "filePath": "REPLACED_BY_TEST", "success": true}
+}

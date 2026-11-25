@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" width="480" height="280">
+<title>stat — schematic</title>
+<desc>Wireframe, no brand: one very large number (42) with a short rule under it on the left; on the right, a bold bar and two grey lines saying what the number means.</desc>
+<rect x="0" y="0" width="240" height="140" fill="#ffffff"/>
+<text fill="#222222" font-family="Helvetica, Arial, sans-serif" x="20" y="96" font-size="66" font-weight="700" letter-spacing="-2">42</text><rect fill="#222222" x="22" y="106" width="80" height="2"/><rect fill="#222222" x="122" y="56" width="96" height="7" rx="3.5"/><rect fill="#bdbdbd" x="122" y="72" width="88" height="6" rx="3"/><rect fill="#bdbdbd" x="122" y="84" width="66" height="6" rx="3"/>
+</svg>
