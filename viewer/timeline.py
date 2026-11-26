@@ -4,7 +4,8 @@ Events: every kept version of every file of the document (gates/lib/history.py) 
 version before, and, for TEXT.md and PLAN.md, the elements and plan levels it changed (an attempt of the plan belongs
 to its level) with their own diffs; the script gate failures of a write; every verdict of a gate judge,
 at the time it was recorded, a complaint (NOT PASSED) with its text. A complaint stays in the timeline when a later
-verdict passes the same place.
+verdict passes the same place. A kept version also carries `why`, what drove it, from the Claude Code session that
+wrote it (viewer/reasons.py): the script gates' answer on the file's version before and the model's own words.
 
 A document made before its versions were kept is rebuilt from what is on disk, each rebuilt event marked
 `reconstructed`: the text of each element and each plan level as its judges saw it (`.gates/inputs/<judge>.md`, whose
@@ -32,6 +33,9 @@ if str(LIB) not in sys.path:
 import docs  # noqa: E402
 import history  # noqa: E402
 import state as gstate  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import reasons  # noqa: E402
 
 PLAN, TEXT = docs.PLAN_FILE, docs.TEXT_FILE
 _TOKEN = re.compile(r"[A-Za-z0-9_.:\-]+")
@@ -328,6 +332,13 @@ def read_timeline(folder: Path) -> dict:
             by_key[key]["disk"] = body
             by_key[key]["disk_note"] = DISK_SEEN if seen else DISK_NEVER
     events += _kept_events(folder, writes, last, last_n)
+    try:  # transcripts are another program's files: a shape it changes must not take the timeline down
+        drove = reasons.reasons(folder, writes)
+    except Exception:  # noqa: BLE001
+        drove = {}
+    for e in events:
+        if e["id"].startswith("w:"):
+            e["why"] = drove.get(int(e["id"][2:])) if e["id"][2:].isdigit() else None
     missing += [{"file": rel, "what": why} for rel, why in sorted(history.skipped(folder).items())]
     for jid, v in verdicts.items():
         gate, u, side, rel = meta_of[jid]
@@ -387,7 +398,7 @@ def _write_event(eid: str, time_: str, rel: str, n: int, **kw) -> dict:
     e = {"id": eid, "kind": "write", "time": time_, "file": rel, "n": n, "reconstructed": False, "tool": None,
          "diff": None, "text": None, "binary": False, "blob": None, "deleted": False, "pieces": [], "scripts": [],
          "script_count": 0, "outcome": "unknown", "gated": rel in (PLAN, TEXT) or rel.startswith("figures/"),
-         "note": None, "same": False}
+         "note": None, "same": False, "why": None}
     e.update(kw)
     return e
 

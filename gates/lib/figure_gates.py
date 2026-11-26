@@ -6,12 +6,11 @@ from __future__ import annotations
 
 import fnmatch
 import re
-import subprocess
 from pathlib import Path
 
 from docs import Doc, brief_part, plain
 from judge_gates import JudgeRequest, complete, section_text, sections
-from common import Failure
+from common import Failure, run_gate_script
 from figure_files import FIG_DIR, IMAGE_EXT, _around, _image_part, _plan_says, _sha, _text_md, _tile_line, caption, is_manual, kind, plan_tile, prompt_file, render, svg_marks, svg_root, text_before, text_figures
 from figure_labels import _norm, label_in, labels
 from figure_steps import steps
@@ -118,17 +117,8 @@ def custom_figure_gates(folder: Path, rel: str) -> tuple[list[Failure], list[Jud
         if not _targets(first, rel):
             continue
         gate = f"custom:{script.stem}"
-        try:
-            r = subprocess.run(["python3", str(script), str(folder), str(folder / rel)], capture_output=True,
-                               text=True, timeout=60)
-        except subprocess.TimeoutExpired:
-            fails.append(Failure(gate, rel, "", "the script ran over 60 s; fix the script"))
-            continue
-        lines = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
-        if r.returncode not in (0, 1) and not lines:
-            lines = [f"the script failed: {(r.stderr.strip().splitlines() or ['no output'])[-1]}; fix the script"]
-        checks = [ln[len("CHECK:"):].strip() for ln in lines if ln.upper().startswith("CHECK:")]
-        fails += [Failure(gate, rel, "", ln) for ln in lines if not ln.upper().startswith("CHECK:")]
+        lines, checks = run_gate_script(script, [str(folder), str(folder / rel)])
+        fails += [Failure(gate, rel, "", ln) for ln in lines]
         if not checks:
             continue
         rule_file = script.with_suffix(".md")

@@ -40,10 +40,11 @@ class JudgeRequest:
     gate: str
     unit: str
     input: str
+    agent_type: str = ""  # a gate with no subagent of its own (a project's gate) names the judge that runs it
 
     @property
     def agent(self) -> str:
-        return AGENT.format(self.gate)
+        return self.agent_type or AGENT.format(self.gate)
 
     @property
     def id(self) -> str:

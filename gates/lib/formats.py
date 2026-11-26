@@ -120,14 +120,19 @@ def gate_switches(doc: Doc) -> list[Failure]:
     """A name in `gates_on` that is not an off-by-default gate: a typo would leave the gate off without a word. A name
     in `gates_off` that is not a gate of the library, or has no reason: the switch would do nothing, or nobody could
     tell why the gate is off."""
+    from project_gates import names as project_names  # the project's own gate library, if it has one
+    project = project_names(doc.folder)
+    off_by_default = list(OFF_BY_DEFAULT) + [n for n, d in project.items() if d == "off"]
     out = [Failure("config", "GATES.md", n, f"`gates_on` names «{n}», which is not a gate that is off by default; "
-                                           f"those are: {', '.join(OFF_BY_DEFAULT)}")
-           for n in sorted(gates_on(doc)) if n not in OFF_BY_DEFAULT]
-    known = set(library_gates())
+                                           f"those are: {', '.join(off_by_default)}")
+           for n in sorted(gates_on(doc)) if n not in off_by_default]
+    known = set(library_gates()) | set(project)
     for n, reason in gates_off(doc).items():
         if n not in known:
             out.append(Failure("config", "GATES.md", n, f"`gates_off` names «{n}», which is not a gate of "
-                                                       "gates/library.md: write the gate's name as the library has it"))
+                                                       "gates/library.md" + (" or of the project's gate library"
+                                                                             if project else "") +
+                                                       ": write the gate's name as the library has it"))
         elif not reason:
             out.append(Failure("config", "GATES.md", n, f"`gates_off` switches «{n}» off with no reason: write why "
                                                        f"in brackets after it, `{n} (what in the brief it argues "

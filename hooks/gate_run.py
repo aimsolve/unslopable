@@ -29,7 +29,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -162,6 +161,7 @@ def custom_gates(folder: Path, name: str, failure_cls, judge_cls) -> tuple[list,
     A plain line is a failure. A line starting with `CHECK:` is a place for a judge: when `.gates/custom/<gate>.md`
     holds the gate's rule, every CHECK place of one run goes to one judge `gate-custom` with that rule.
     Returns (failures, judge requests)."""
+    from common import run_gate_script
     fails, reqs = [], []
     for script in sorted((folder / ".gates" / "custom").glob("*.py")):
         try:
@@ -171,16 +171,8 @@ def custom_gates(folder: Path, name: str, failure_cls, judge_cls) -> tuple[list,
         if not first or name not in first[0]:
             continue
         gate = f"custom:{script.stem}"
-        try:
-            r = subprocess.run(["python3", str(script), str(folder)], capture_output=True, text=True, timeout=60)
-        except subprocess.TimeoutExpired:
-            fails.append(failure_cls(gate, name, "", "the script ran over 60 s; fix the script"))
-            continue
-        lines = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
-        if r.returncode not in (0, 1) and not lines:
-            lines = [f"the script failed: {(r.stderr.strip().splitlines() or ['no output'])[-1]}; fix the script"]
-        checks = [ln[len("CHECK:"):].strip() for ln in lines if ln.upper().startswith("CHECK:")]
-        fails += [failure_cls(gate, name, "", ln) for ln in lines if not ln.upper().startswith("CHECK:")]
+        lines, checks = run_gate_script(script, [str(folder)])
+        fails += [failure_cls(gate, name, "", ln) for ln in lines]
         if not checks:
             continue
         rule_file = script.with_suffix(".md")
@@ -278,6 +270,10 @@ def main() -> None:
 
     more_fails, custom_reqs = custom_gates(folder, name, Failure, JudgeRequest)
     fails += more_fails
+    from project_gates import project_gates  # the gates of the project's own library (.unslopable/gates/)
+    more_fails, project_reqs = project_gates(doc, name, JudgeRequest)
+    fails += more_fails
+    custom_reqs += project_reqs
     from common import drop_off  # the gates GATES.md `gates_off` switches off report nothing and start no judge
     fails = drop_off(doc, fails, kind)
 
@@ -465,6 +461,8 @@ def figure_report(gstate, folder: Path, rels: list) -> tuple[str, set]:
     """The gates' report on these figures, and the figures whose script gates failed."""
     from docs import load
     from figure_gates import custom_figure_gates, run_figure
+    from judge_gates import JudgeRequest
+    from project_gates import project_gates
     from common import drop_off
     import history
     doc = load(folder)
@@ -477,12 +475,15 @@ def figure_report(gstate, folder: Path, rels: list) -> tuple[str, set]:
         f1, r1 = run_figure(doc, rel, notices)
         f1, r1 = drop_off(doc, f1), drop_off(doc, r1)
         f2, r2 = custom_figure_gates(folder, rel)
+        f3, r3 = project_gates(doc, rel, JudgeRequest)  # the project's own library (.unslopable/gates/)
+        f2, r2 = f2 + f3, r2 + r3
         if f1 or f2:
             failed.add(rel)
         fails += f1 + f2
         reqs += r1 + r2
         file_of.update({r.id: folder / rel for r in r1 + r2})
         kept.append((n, [f.line() for f in f1 + f2], [r.id for r in r1 + r2]))
+    fails = list({f.line(): f for f in fails}.values())  # a broken project library is reported once, not per figure
     for n, lines, ids in kept:  # judges run only once every figure of the call passed its script gates
         history.note(folder, n, lines, [] if fails else ids)
     names = ", ".join(rels)

@@ -15,6 +15,11 @@ document can decide. You never write the plan or the text.
 - `BRIEF.md`.
 - `gates/library.md` of the plugin: every gate, what it checks and its default. The gates whose default is
   `per document` are ideas: read each one's text in the plugin's `gates/ideas/`.
+- The project's own gate library, when the project has one: the folder `.unslopable/gates/` in the document folder
+  or the nearest folder above it, else in the project folder (`$CLAUDE_PROJECT_DIR`). It has the plugin's layout:
+  read its `library.md` as you read the plugin's, and its ideas in its `ideas/`. Its gates are gates of this
+  document like the plugin's: the hook runs its `on` gates, and you switch them on, off or write their ideas the
+  same way. `python3 <the plugin's gates/lib/project_gates.py> <document folder>` prints where it is and its gates.
 - `PLAN.md`, when you are run after a level of the plan.
 - `GATES.md` and the folder `.gates/custom/`, if they exist: what earlier runs of this stage wrote.
 
@@ -31,16 +36,16 @@ document can decide. You never write the plan or the text.
    Above the numbers, a few lines on how you got them.
    Gates whose default in the library is `off` run only when `GATES.md` switches them on with one line
    `gates_on: <name>; <name>` — now `no-document-talk` (no talk about the document itself) and `no-announcing` (no
-   announcing later contents). Switch one on when the brief asks for it or the author agrees; a name there that is not
-   such a gate fails as `config`.
+   announcing later contents), and every gate of the project's library whose Default is `off`. Switch one on when
+   the brief asks for it or the author agrees; a name there that is not such a gate fails as `config`.
    A gate that argues with the brief you switch off or retune here, by the brief; the gate itself does not change.
    Retune it by its number when one fits (a larger `plain_text_max_lines` when the brief allows long prose). Switch
    it off with one line `gates_off: <name> (<reason>); <name> (<reason>)`, each gate by its name in the library, the
    reason the part of the brief it argues with: `gates_off: plan-wall (the brief rules out lists, tables and
-   pictures)`. A switched-off gate reports nothing and starts no judge; a name that is not a gate of the library, or
-   one with no reason, fails as `config`.
-2. **The script of every idea gate that applies to this document**, as `.gates/custom/<gate>.py`. The library holds
-   only the idea; you write the concrete check from what this brief says.
+   pictures)`. A switched-off gate reports nothing and starts no judge; a name that is not a gate of the plugin's
+   or the project's library, or one with no reason, fails as `config`.
+2. **The script of every idea gate that applies to this document**, as `.gates/custom/<gate>.py`: the plugin's
+   ideas and the project's. The library holds only the idea; you write the concrete check from what this brief says.
 3. **The document's own gates**: every rule in the brief that a script can check and the library does not have
    (how a name is written, which units or currency, which words or forms of address are not used). One script each,
    in `.gates/custom/`.

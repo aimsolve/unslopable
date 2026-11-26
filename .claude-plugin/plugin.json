@@ -1,6 +1,6 @@
 {
   "name": "unslopable",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Document generator that writes readable documents without AI slop. A multi-stage agentic pipeline: an interview of the author defines the reader and the questions the document must answer; then a section list, a plan, writer, stylist, judges, editor, fact checker and render. Every stage is a model agent; script checks and model judges test its output, and the author approves the reader, the section list and the plan at gates.",
   "agents": [
     "./agents/brief-critic.md",
@@ -14,6 +14,7 @@
     "./gates/judges/gate-cell-answers-header.md",
     "./gates/judges/gate-cliche.md",
     "./gates/judges/gate-custom.md",
+    "./gates/judges/gate-project.md",
     "./gates/judges/gate-date-tense.md",
     "./gates/judges/gate-date-weekday.md",
     "./gates/judges/gate-example-own-line.md",

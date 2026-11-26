@@ -19,9 +19,9 @@ A Claude Code plugin for making readable documents with a pipeline of model agen
 | `hooks/` | `option_shuffle.py` (no recommended options, shuffled), `brief_followup.py` (runs the brief critic after every answer; registered by the brief skill), `gate_run.py` (runs the gates when a plan level or the text is written), `collect_judges.py` (the gate runner's tool: hands out each round of due judges, records their verdicts, writes the report) |
 | `gates/library.md` | The list of gates: one row per gate, what it checks, its default, links to its files |
 | `gates/scripts/` | One script per gate, named after it (two gates that share one parse share its script): fails places, or finds them for the gate's judge |
-| `gates/judges/` | One judge per judge gate (`gate-<gate>.md`): reads one input file, answers PASSED or NOT PASSED with the places; listed in the manifest's `agents` |
+| `gates/judges/` | One judge per judge gate (`gate-<gate>.md`): reads one input file, answers PASSED or NOT PASSED with the places; listed in the manifest's `agents`. Two of them are generic: `gate-custom` judges a document's own gates, `gate-project` the gates of a project's library |
 | `gates/ideas/` | One text per idea gate: the gates stage writes a document's own script from it |
-| `gates/lib/` | Shared code: the document reader (`docs.py`), the script runner (`run_scripts.py`), the judges' inputs (`judge_gates.py`), figure files (`figure_files.py`, `figure_gates.py`), the spaCy parsers (`*_en.py`), every version of every file of a document, for its timeline (`history.py`), the tools `weekday.py`, `image_margin.py`, `image_similarity.py` |
+| `gates/lib/` | Shared code: the document reader (`docs.py`), the script runner (`run_scripts.py`), the judges' inputs (`judge_gates.py`), a project's own gate library (`project_gates.py`), figure files (`figure_files.py`, `figure_gates.py`), the spaCy parsers (`*_en.py`), every version of every file of a document, for its timeline (`history.py`), the tools `weekday.py`, `image_margin.py`, `image_similarity.py` |
 | `gates/data/slop/` | The slop word lists the slop-words gate reads |
 | `viewer/` | The document viewer, the plugin's UI: `serve.py` (a local server on 127.0.0.1), `timeline.py` (reads a document folder into its timeline) and `page.html`; opened by `skills/viewer/` (`/unslopable:viewer [folder]`) |
 | `tests/` | `python3 -m unittest discover -s tests` (`SKIP_SPACY=1` skips the spaCy tests) |
@@ -167,6 +167,63 @@ test module).
 **The fact base**: a Bash call that runs `research.py fetch|save|add|remove|merge|merge-attribute|gap|finish <folder>`, or a write of `research/facts.json` or `FACTS.md` (by Write/Edit, or a Bash command that names it), in a folder that has a `BRIEF.md`, runs the research's script gates `fact-quoted` and `sources-conflict` (`research_main`); they answer only when they fail, since `add` already answers every fact.
 
 Every gate, what it checks, whether it is on by default and its script, judge or idea: [gates/library.md](gates/library.md).
+
+## A project's own gates
+
+A project that installs the plugin adds its own gates in the plugin's own standard, and the plugin runs them as its
+own: the gate hook runs their scripts and starts their judges, the gate runner, the report, `gates_on` / `gates_off`
+in GATES.md, the gates stage and the viewer treat them like the gates of `gates/library.md`.
+
+**Where**: the folder `.unslopable/gates/` of the project. For a document the hook takes the nearest one: in the
+document folder or the nearest folder above it that has `.unslopable/gates/library.md`; when none has, the one in
+`$CLAUDE_PROJECT_DIR` (the folder Claude Code runs in). Only that one library counts. A project without it runs the
+plugin's gates only, as before. `python3 gates/lib/project_gates.py <document folder>` prints where the library of
+a document is and its gates.
+
+**Layout**, the same as the plugin's `gates/`:
+
+```
+.unslopable/gates/
+  library.md            the table of the project's gates
+  scripts/<gate>.py     script gates
+  judges/gate-<gate>.md judge prompts
+  ideas/<gate>.md       ideas the gates stage writes a document's own script from
+  lib/                  shared code of the scripts (on their PYTHONPATH)
+  data/                 data files the scripts and judges read (lists, snapshots, settings of the project)
+```
+
+**library.md**: tables with the plugin's columns, `| Gate | What it checks | Default | Script | Judge | Idea |`, one
+row per gate, links relative to the library (`[script](scripts/x.py)`, `[judge](judges/gate-x.md)`,
+`[idea](ideas/x.md)`); `## Plan`, `## Text` headings as in the plugin's are for the reader. Every table of
+library.md is read as a table of gates, so keep other tables out of it and write no `|` inside a cell. A name is lower-case
+words joined by `-`, and not a name of the plugin's gates. **Default**: `on` runs in every document; `off` only when
+GATES.md switches it on with `gates_on: <gate>`; `manuals` only with `manual: yes` in GATES.md; `per document` is an
+idea (link its text in Idea; the gates stage writes its script into the document's `.gates/custom/`); `not built
+yet` does not run. `gates_off: <gate> (<reason>)` in GATES.md switches a project gate off like a plugin gate. What
+is wrong with library.md (an unknown Default, a link to a missing file, a plugin gate's name, a judge with no
+script, a script whose first line names no file) fails every gated write as `config` until it is fixed.
+
+**A script** follows the contract of a document's own gates: the first line is a comment naming the file it checks,
+`PLAN.md`, `TEXT.md`, or `figures/` or a pattern such as `figures/*.svg`; the hook runs it on every write of that
+file as `python3 <script> <document folder>` (a figure: `… <document folder> <figure file>`), within 60 s. It prints
+one line per failure (where, what is wrong, how to fix); a line `CHECK: <where> — <the words>` is a place for the
+gate's judge; no output means passed. Exit 0 or 1; another exit code with no output is a failure of the script. A
+failure reaches the writer as `[<gate>] …`, like a plugin gate's. In its environment `UNSLOPABLE_PROJECT_GATES` is the
+library folder (data: `$UNSLOPABLE_PROJECT_GATES/data/…`), and its PYTHONPATH has the library's `lib/` and then the
+plugin's `gates/lib/` (so `from docs import load` reads the document as the plugin's gates do). Per-document values
+(a product, a query) are in the document folder: GATES.md keys, or files the project's pipeline writes there.
+
+**A judge** is a prompt file as the plugin's `gates/judges/gate-*.md`: what fails, what passes (frontmatter, if any,
+is dropped; `{folder}` becomes the document folder and `{library}` the library folder). A project cannot register a
+subagent with the plugin, so the plugin's generic judge `unslopable:gate-project` (`gates/judges/gate-project.md`,
+tools: Read) runs it: when the gate's script prints CHECK lines, the hook writes one judge input with the project's
+prompt, the document and library folders, the checked file and the places, and the gate runner starts
+`unslopable:gate-project` on it like any judge. Its verdict is recorded, reported and shown in the viewer under the
+gate's name, and it is not run again while its input stays the same. A judge decides the places its script found,
+so a judge gate always has a script; a gate that needs a model on a whole section prints that section as its place.
+
+**Tests**: `tests/test_project_gates.py` builds a sample project library (a script gate, a judge gate, an idea) and
+runs it through the hook, the gate runner's script and the viewer.
 
 ## Provisional (19.11 night, test run)
 

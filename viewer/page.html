@@ -68,6 +68,10 @@
   .diff ins { background: var(--pass-bg); color: var(--pass); text-decoration: none; }
   .diff del + ins { margin-left: 3px; }
   .scripts { margin: 4px 0 0; padding-left: 18px; color: var(--fail); font-size: 13px; }
+  .why { margin-top: 4px; font-size: 13px; }
+  .why .sub { margin-top: 4px; }
+  .said { margin: 2px 0 0; padding: 2px 10px; border-left: 3px solid var(--write); background: #f4f6fd;
+          white-space: pre-wrap; }
   button.link { font-size: 12px; padding: 0 6px; cursor: pointer; background: none; border: 1px solid var(--line);
                 border-radius: 4px; color: var(--mute); }
   pre.prompt { white-space: pre-wrap; font: 12px/1.4 ui-monospace, Menlo, monospace; background: #f6f6f3;
@@ -105,6 +109,8 @@ const T = {
   missing: n => `Not on disk, so not in the timeline (${n})`, updated: "updated", binary: "binary file",
   first: "first version", show: "show", hide: "hide", now: "as on disk now", more: "…cut; open the whole version",
   removed: "removed", regated: "gated again", same: "no change", scriptLines: "which checks failed was not kept", by: "by",
+  whyGates: "script gates on the version before:", whySaid: "the model, before this write:",
+  hookText: "the gate hook's whole answer", hideHook: "hide the gate hook's answer",
   counts: (w, c, p) => `${w} writes · ${c} complaints · ${p} passes`,
 };
 document.querySelectorAll("[data-t]").forEach(e => e.textContent = T[e.dataset.t]);
@@ -207,6 +213,7 @@ function writeHtml(e, pieces) {
     ${e.reconstructed ? `<span class="tag">${esc(e.file_now ? T.now : T.reconstructed)}</span>` : ""}
     ${failed ? `<span class="pill fail">✗ ${esc(T.scriptsFailed)}: ${e.script_count}</span>` : ""}</div>`;
   if (e.note) h += `<div class="note">${esc(e.note)}</div>`;
+  h += whyHtml(e);
   if (failed) h += e.scripts.length ? `<ul class="scripts">${e.scripts.map(s => `<li>${esc(s)}</li>`).join("")}</ul>`
                                     : `<div class="sub">${esc(T.scriptLines)}</div>`;
   for (const p of pieces) {
@@ -224,6 +231,20 @@ function writeHtml(e, pieces) {
       if (open && e.cut) h += `<a class="sub" target="_blank" href="${e.blob ? `/api/blob?${q()}&blob=${encodeURIComponent(e.blob)}` : `/api/file?${q()}&file=${encodeURIComponent(e.file)}`}">${esc(T.more)}</a>`;
     }
   }
+  return h + `</div>`;
+}
+
+// what drove this version, from the session's transcript: the script gates' answer on the version before, the
+// model's own words since its previous write
+function whyHtml(e) {
+  const w = e.why;
+  if (!w || !(w.gates.length || w.said.length || w.gates_text)) return "";
+  const key = "h" + e.id, open = state.open.has(key);
+  let h = `<div class="why">`;
+  if (w.gates.length) h += `<div class="sub">${esc(T.whyGates)}</div><ul class="scripts">${w.gates.map(s => `<li>${esc(s)}</li>`).join("")}</ul>`;
+  if (w.said.length) h += `<div class="sub">${esc(T.whySaid)}</div>` + w.said.map(s => `<div class="said">${esc(s)}</div>`).join("");
+  if (w.gates_text) h += `<button class="link" data-open="${esc(key)}">${esc(open ? T.hideHook : T.hookText)}</button>` +
+    (open ? `<pre class="prompt">${esc(w.gates_text)}</pre>` : "");
   return h + `</div>`;
 }
 

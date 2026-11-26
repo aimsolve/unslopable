@@ -14,6 +14,10 @@ plan.
   [judges/gate-custom.md](judges/gate-custom.md).
 - **Idea**: a text in [ideas/](ideas/) the gates stage writes a document's own script from.
 
+A project adds its own gates in the same layout, in its folder `.unslopable/gates/` (README, «A project's own
+gates»); the gates stage and the gate hook treat them as gates of this library. Their judges' prompts go to the
+generic judge [judges/gate-project.md](judges/gate-project.md).
+
 Shared code is in [lib/](lib/): the document reader, the script runner, the judges' inputs, the figure files and the
 spaCy parsers. Numbers such as `sentence_max_words` are set per document in GATES.md.
 

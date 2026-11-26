@@ -3,6 +3,7 @@ gates that are off by default, and the plan's element kinds."""
 from __future__ import annotations
 
 import re
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,6 +23,21 @@ class Failure:
     def line(self) -> str:
         q = f" «{self.quote}»" if self.quote else ""
         return f"[{self.gate}] {self.where}{q} — {self.why}"
+
+
+def run_gate_script(script: Path, args: list[str], env: dict | None = None) -> tuple[list[str], list[str]]:
+    """Run a gate script that is not the plugin's own (a document's `.gates/custom/`, a project's library) as
+    `python3 <script> <args>`: one stdout line per place, no output = passed. Returns (failure lines, the places of
+    its `CHECK:` lines). A script over 60 s, or one that fails with no output, is a failure of the script."""
+    try:
+        r = subprocess.run(["python3", str(script)] + args, capture_output=True, text=True, timeout=60, env=env)
+    except subprocess.TimeoutExpired:
+        return ["the script ran over 60 s; fix the script"], []
+    lines = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
+    if r.returncode not in (0, 1) and not lines:
+        lines = [f"the script failed: {(r.stderr.strip().splitlines() or ['no output'])[-1]}; fix the script"]
+    checks = [ln[len("CHECK:"):].strip() for ln in lines if ln.upper().startswith("CHECK:")]
+    return [ln for ln in lines if not ln.upper().startswith("CHECK:")], checks
 
 
 def _num(doc: Doc, key: str, gate: str, out: list[Failure], default: float | None = None) -> float | None:
